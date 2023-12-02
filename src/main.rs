@@ -33,7 +33,7 @@ impl Sandbox for ModManager {
 
     fn update(&mut self, message: Message) {
         match message {
-            Message::Toggle(i, b) => self.mod_list.get_mut(i).and_then(|m| Some(m.0 = b)),
+            Message::Toggle(i, b) => self.mod_list.get_mut(i).map(|m| m.0 = b),
         };
     }
 
