@@ -1,4 +1,4 @@
-# Icy Isac Mod Manager
+# Icy Isaac Mod Manager
 A simple mod manager for The Binding of Isaac Rebirth, made in Rust with iced.
 
 ## Building
