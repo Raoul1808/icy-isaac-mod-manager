@@ -13,7 +13,7 @@ struct ModManager {
 
 #[derive(Debug, Clone)]
 enum Message {
-    Toggle(usize, bool)
+    Toggle(usize, bool),
 }
 
 impl Sandbox for ModManager {
@@ -24,9 +24,7 @@ impl Sandbox for ModManager {
         for i in 0..10 {
             mods.push((rand::random::<i32>() % 2 == 1, format!("Testing {i}")));
         }
-        Self {
-            mod_list: mods,
-        }
+        Self { mod_list: mods }
     }
 
     fn title(&self) -> String {
