@@ -48,6 +48,8 @@ struct ModManager {
 enum Message {
     Toggle(usize, bool),
     Refresh,
+    EnableAll,
+    DisableAll,
 }
 
 impl ModManager {
@@ -88,12 +90,23 @@ impl Sandbox for ModManager {
 
     fn update(&mut self, message: Message) {
         // TODO: find better way to handle (and display) errors here
+        // TODO: REALLY find a better way to handle errors
         match message {
             Message::Toggle(i, b) => {
                 let _ = self.mod_list.get_mut(i).map(|m| m.set_enabled(b));
             }
             Message::Refresh => {
                 let _ = self.refresh_mods();
+            }
+            Message::EnableAll => {
+                for m in self.mod_list.iter_mut() {
+                    let _ = m.set_enabled(true);
+                }
+            }
+            Message::DisableAll => {
+                for m in self.mod_list.iter_mut() {
+                    let _ = m.set_enabled(false);
+                }
             }
         };
     }
@@ -115,8 +128,16 @@ impl Sandbox for ModManager {
         .padding(20);
         let scroll = scrollable(mod_list);
         let refresh = button("Refresh List").on_press(Message::Refresh);
-        container(row![scroll, refresh].spacing(10))
-            .padding(20)
-            .into()
+        let enable_all = button("Enable All").on_press(Message::EnableAll);
+        let disable_all = button("Disable All").on_press(Message::DisableAll);
+        container(
+            row![
+                scroll,
+                column![refresh, enable_all, disable_all].spacing(10)
+            ]
+            .spacing(10),
+        )
+        .padding(20)
+        .into()
     }
 }
