@@ -1,11 +1,11 @@
 use std::{
     fs::{self, File},
     io,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use iced::{
-    widget::{checkbox, column, container, scrollable},
+    widget::{button, checkbox, column, container, row, scrollable},
     Element, Sandbox, Settings,
 };
 
@@ -47,29 +47,39 @@ struct ModManager {
 #[derive(Debug, Clone)]
 enum Message {
     Toggle(usize, bool),
+    Refresh,
+}
+
+impl ModManager {
+    fn refresh_mods(&mut self) -> io::Result<()> {
+        const MOD_PATH: &str =
+            "/ssd/SteamLibrary/steamapps/common/The Binding of Isaac Rebirth/mods/";
+        let mut mods = Vec::new();
+        for entry in fs::read_dir(MOD_PATH)?.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let p = String::from(
+                    path.file_name()
+                        .unwrap_or(path.as_os_str())
+                        .to_string_lossy(),
+                );
+                mods.push(Mod { name: p, path });
+            }
+        }
+        self.mod_list = mods;
+        Ok(())
+    }
 }
 
 impl Sandbox for ModManager {
     type Message = Message;
 
     fn new() -> Self {
-        const MOD_PATH: &str =
-            "/ssd/SteamLibrary/steamapps/common/The Binding of Isaac Rebirth/mods/";
-        let mut mods = Vec::new();
-        if let Ok(dir) = fs::read_dir(Path::new(MOD_PATH)) {
-            for entry in dir.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    let p = String::from(
-                        path.file_name()
-                            .unwrap_or(path.as_os_str())
-                            .to_string_lossy(),
-                    );
-                    mods.push(Mod { name: p, path });
-                }
-            }
-        }
-        Self { mod_list: mods }
+        let mut manager = Self {
+            mod_list: Default::default(),
+        };
+        let _ = manager.refresh_mods();
+        manager
     }
 
     fn title(&self) -> String {
@@ -77,8 +87,14 @@ impl Sandbox for ModManager {
     }
 
     fn update(&mut self, message: Message) {
+        // TODO: find better way to handle (and display) errors here
         match message {
-            Message::Toggle(i, b) => self.mod_list.get_mut(i).map(|m| m.set_enabled(b)),
+            Message::Toggle(i, b) => {
+                let _ = self.mod_list.get_mut(i).map(|m| m.set_enabled(b));
+            }
+            Message::Refresh => {
+                let _ = self.refresh_mods();
+            }
         };
     }
 
@@ -98,6 +114,9 @@ impl Sandbox for ModManager {
         .spacing(10)
         .padding(20);
         let scroll = scrollable(mod_list);
-        container(scroll).padding(20).into()
+        let refresh = button("Refresh List").on_press(Message::Refresh);
+        container(row![scroll, refresh].spacing(10))
+            .padding(20)
+            .into()
     }
 }
