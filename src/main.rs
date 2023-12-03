@@ -5,7 +5,7 @@ use std::{
 };
 
 use iced::{
-    widget::{button, checkbox, column, container, row, scrollable},
+    widget::{checkbox, column, container, row, scrollable},
     Element, Sandbox, Settings,
 };
 
@@ -127,9 +127,11 @@ impl Sandbox for ModManager {
         .spacing(10)
         .padding(20);
         let scroll = scrollable(mod_list);
-        let refresh = button("Refresh List").on_press(Message::Refresh);
-        let enable_all = button("Enable All").on_press(Message::EnableAll);
-        let disable_all = button("Disable All").on_press(Message::DisableAll);
+        let refresh = button("REFRESH").on_press(Message::Refresh).width(120);
+        let enable_all = button("ENABLE ALL").on_press(Message::EnableAll).width(120);
+        let disable_all = button("DISABLE ALL")
+            .on_press(Message::DisableAll)
+            .width(120);
         container(
             row![
                 scroll,
@@ -140,4 +142,11 @@ impl Sandbox for ModManager {
         .padding(20)
         .into()
     }
+}
+
+fn button(text: &str) -> iced::widget::Button<'_, Message> {
+    iced::widget::button(
+        iced::widget::text(text).horizontal_alignment(iced::alignment::Horizontal::Center),
+    )
+    .padding(5)
 }
