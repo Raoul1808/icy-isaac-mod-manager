@@ -2,17 +2,18 @@ use std::{fs, io};
 
 use iced::{
     alignment::{Horizontal, Vertical},
-    widget::{checkbox, column, container, row, scrollable, text, text_input},
+    widget::{checkbox, column, container, pick_list, row, scrollable, text, text_input},
     Alignment, Element, Length, Sandbox,
 };
 use rfd::FileDialog;
 
-use crate::types::{AppConfig, Mod};
+use crate::types::{AppConfig, Mod, Theme};
 
 pub struct ModManager {
     mod_list: Vec<Mod>,
     state: AppState,
     config: AppConfig,
+    current_theme: Option<Theme>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,7 @@ pub enum Message {
     // Config related entries
     SaveConfig,
     SelectGamePath,
+    SwitchTheme(Theme),
 
     // Misc
     ActionOpen(String),
@@ -68,13 +70,22 @@ impl Sandbox for ModManager {
             mod_list: Default::default(),
             state: AppState::ModList,
             config: AppConfig::load_or_default(),
+            current_theme: None,
         };
+        manager.current_theme = Some(manager.config.theme);
         let _ = manager.refresh_mods();
         manager
     }
 
     fn title(&self) -> String {
         String::from("Icy Isaac Mod Manager")
+    }
+
+    fn theme(&self) -> iced::Theme {
+        match self.current_theme.unwrap_or_default() {
+            Theme::Dark => iced::Theme::Dark,
+            Theme::Light => iced::Theme::Light,
+        }
     }
 
     fn update(&mut self, message: Message) {
@@ -101,7 +112,10 @@ impl Sandbox for ModManager {
             }
             // Navigation stuff
             Message::OpenConfig => self.state = AppState::Config(self.config.clone()),
-            Message::ReturnToModList => self.state = AppState::ModList,
+            Message::ReturnToModList => {
+                self.state = AppState::ModList;
+                self.current_theme = Some(self.config.theme);
+            }
             Message::OpenAbout => self.state = AppState::About,
             // Config stuff
             Message::SaveConfig => {
@@ -116,6 +130,12 @@ impl Sandbox for ModManager {
                         temp_config.mods_path = folder;
                     }
                 }
+            }
+            Message::SwitchTheme(theme) => {
+                if let AppState::Config(temp_config) = &mut self.state {
+                    temp_config.theme = theme;
+                }
+                self.current_theme = Some(theme);
             }
             // Misc
             Message::ActionOpen(action) => {
@@ -175,7 +195,13 @@ impl Sandbox for ModManager {
                     .width(120);
                 let game_path =
                     row![game_path_label, game_path_field, game_path_button].spacing(10);
-                let settings_col = column![game_path].height(Length::Fill);
+                let theme_label = text("Theme")
+                    .vertical_alignment(Vertical::Center)
+                    .line_height(iced::widget::text::LineHeight::Relative(2.));
+                let theme_pick =
+                    pick_list(&Theme::ALL[..], self.current_theme, Message::SwitchTheme);
+                let theme = row![theme_label, theme_pick].spacing(10);
+                let settings_col = column![game_path, theme].spacing(10).height(Length::Fill);
                 container(
                     column![header, settings_col, end_row]
                         .spacing(20)

@@ -85,9 +85,34 @@ pub enum ModTagId {
     Api,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppConfig {
     pub mods_path: PathBuf,
+    pub theme: Theme,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Theme {
+    #[default]
+    Light,
+    Dark,
+}
+
+impl Theme {
+    pub const ALL: [Self; 2] = [Self::Light, Self::Dark];
+}
+
+impl std::fmt::Display for Theme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Light => "Light",
+                Self::Dark => "Dark",
+            }
+        )
+    }
 }
 
 impl AppConfig {
