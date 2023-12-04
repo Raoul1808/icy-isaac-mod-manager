@@ -44,7 +44,7 @@ pub struct ModMetadata {
     pub version: String,
     pub visibility: String,
     #[serde(rename = "tag")]
-    pub tags: Vec<ModTag>,
+    pub tags: Option<Vec<ModTag>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,6 +81,8 @@ pub enum ModTagId {
     #[serde(rename = "Sound Effects")]
     SoundEffects,
     Music,
+    #[serde(rename = "API")]
+    Api,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
