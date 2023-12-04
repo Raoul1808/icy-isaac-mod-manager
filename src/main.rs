@@ -1,43 +1,17 @@
-use std::{
-    fs::{self, File},
-    io,
-    path::PathBuf,
-};
+use std::{fs, io};
 
 use iced::{
     widget::{checkbox, column, container, row, scrollable},
     Element, Sandbox, Settings,
 };
 
+mod types;
+mod util;
+
+use crate::types::Mod;
+
 fn main() -> iced::Result {
     ModManager::run(Settings::default())
-}
-
-fn create_empty_file(path: PathBuf) -> io::Result<()> {
-    let _ = File::create(path)?;
-    Ok(())
-}
-
-struct Mod {
-    name: String,
-    path: PathBuf,
-}
-
-impl Mod {
-    pub fn disable_path(&self) -> PathBuf {
-        self.path.join("disable.it")
-    }
-
-    pub fn enabled(&self) -> bool {
-        !self.disable_path().exists()
-    }
-
-    pub fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
-        match enabled {
-            true => fs::remove_file(self.disable_path()),
-            false => create_empty_file(self.disable_path()),
-        }
-    }
 }
 
 struct ModManager {
@@ -60,14 +34,13 @@ impl ModManager {
         for entry in fs::read_dir(MOD_PATH)?.flatten() {
             let path = entry.path();
             if path.is_dir() {
-                let p = String::from(
-                    path.file_name()
-                        .unwrap_or(path.as_os_str())
-                        .to_string_lossy(),
-                );
-                mods.push(Mod { name: p, path });
+                match Mod::from_path(path) {
+                    Ok(m) => mods.push(m),
+                    Err(e) => println!("Error loading mod: {e}"),
+                }
             }
         }
+        println!("{:#?}", mods);
         self.mod_list = mods;
         Ok(())
     }
@@ -117,7 +90,7 @@ impl Sandbox for ModManager {
                 .iter()
                 .enumerate()
                 .map(|(i, m)| {
-                    checkbox(m.name.to_owned(), m.enabled(), move |b| {
+                    checkbox(m.metadata.name.to_owned(), m.enabled(), move |b| {
                         Message::Toggle(i, b)
                     })
                     .into()
