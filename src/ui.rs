@@ -188,13 +188,17 @@ impl Sandbox for ModManager {
                 let title = text("Icy Isaac Mod Manager")
                     .size(32)
                     .horizontal_alignment(Horizontal::Center);
-                let back_button = button("BACK").on_press(Message::ReturnToModList).width(120);
-                let intro_text = text("Made with <3 by Mew.")
+                let version_string = text(format!("Version {}", crate::APP_VERSION))
+                    .size(12)
                     .horizontal_alignment(Horizontal::Center);
+                let header_col = column![title, version_string]
+                    .spacing(10)
+                    .align_items(Alignment::Center);
+                let back_button = button("BACK").on_press(Message::ReturnToModList).width(120);
+                let intro_text =
+                    text("Made with <3 by Mew.").horizontal_alignment(Horizontal::Center);
                 let this_code = button("Source Code")
-                    .on_press(Message::ActionOpen(
-                        "https://github.com/Raoul1808/icy-isaac-mod-manager".to_string(),
-                    ))
+                    .on_press(Message::ActionOpen(crate::REPOSITORY.to_string()))
                     .style(iced::theme::Button::Secondary)
                     .width(240);
                 let rust_button = button("Made in Rust")
@@ -214,7 +218,7 @@ impl Sandbox for ModManager {
                     .height(Length::Fill)
                     .align_items(Alignment::Center);
                 container(
-                    column![title, middle_content, back_button]
+                    column![header_col, middle_content, back_button]
                         .spacing(20)
                         .align_items(Alignment::Center),
                 )
