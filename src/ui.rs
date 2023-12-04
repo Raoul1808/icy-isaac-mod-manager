@@ -17,22 +17,30 @@ pub struct ModManager {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    // Mod list entries
     Toggle(usize, bool),
     Refresh,
     EnableAll,
     DisableAll,
 
-    // Config related entries
+    // Navigation
     OpenConfig,
-    LeaveConfig,
+    ReturnToModList,
+    OpenAbout,
+
+    // Config related entries
     SaveConfig,
     SelectGamePath,
+
+    // Misc
+    ActionOpen(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum AppState {
     ModList,
     Config(AppConfig),
+    About,
 }
 
 impl ModManager {
@@ -47,7 +55,6 @@ impl ModManager {
                 }
             }
         }
-        println!("{:#?}", mods);
         self.mod_list = mods;
         Ok(())
     }
@@ -75,6 +82,7 @@ impl Sandbox for ModManager {
         // TODO: REALLY find a better way to handle errors
         // TODO: REALLY REALLY REALLY FIND A WAY TO ACTUALLY HANDLE ERRORS
         match message {
+            // Mod list
             Message::Toggle(i, b) => {
                 let _ = self.mod_list.get_mut(i).map(|m| m.set_enabled(b));
             }
@@ -91,14 +99,15 @@ impl Sandbox for ModManager {
                     let _ = m.set_enabled(false);
                 }
             }
-            // Config stuff
+            // Navigation stuff
             Message::OpenConfig => self.state = AppState::Config(self.config.clone()),
-            Message::LeaveConfig => self.state = AppState::ModList,
+            Message::ReturnToModList => self.state = AppState::ModList,
+            Message::OpenAbout => self.state = AppState::About,
+            // Config stuff
             Message::SaveConfig => {
                 if let AppState::Config(temp_config) = &self.state {
                     self.config = temp_config.clone();
                     let _ = self.config.save();
-                    println!("{:#?}", self.config);
                 }
             }
             Message::SelectGamePath => {
@@ -107,6 +116,10 @@ impl Sandbox for ModManager {
                         temp_config.mods_path = folder;
                     }
                 }
+            }
+            // Misc
+            Message::ActionOpen(action) => {
+                let _ = open::that_detached(action);
             }
         };
     }
@@ -133,23 +146,20 @@ impl Sandbox for ModManager {
                 let disable_all = button("DISABLE ALL")
                     .on_press(Message::DisableAll)
                     .width(120);
-                container(
-                    row![
-                        scroll,
-                        column![
-                            column![refresh, enable_all, disable_all]
-                                .spacing(10)
-                                .height(Length::Fill),
-                            button("SETTINGS").on_press(Message::OpenConfig).width(120),
-                        ]
-                    ]
-                    .spacing(10),
-                )
-                .padding(30)
-                .into()
+                let top_buttons = column![refresh, enable_all, disable_all]
+                    .spacing(10)
+                    .height(Length::Fill);
+                let settings_button = button("SETTINGS").on_press(Message::OpenConfig).width(120);
+                let about_button = button("ABOUT").on_press(Message::OpenAbout).width(120);
+                let bottom_buttons = column![settings_button, about_button].spacing(10);
+                container(row![scroll, column![top_buttons, bottom_buttons],].spacing(10))
+                    .padding(30)
+                    .into()
             }
             AppState::Config(temp_config) => {
-                let back_button = button("RETURN").on_press(Message::LeaveConfig).width(120);
+                let back_button = button("RETURN")
+                    .on_press(Message::ReturnToModList)
+                    .width(120);
                 let save_button = button("SAVE").on_press(Message::SaveConfig).width(120);
                 let header = text("Application Settings")
                     .horizontal_alignment(Horizontal::Center)
@@ -171,6 +181,46 @@ impl Sandbox for ModManager {
                         .spacing(20)
                         .align_items(Alignment::Center),
                 )
+                .padding(30)
+                .into()
+            }
+            AppState::About => {
+                let title = text("Icy Isaac Mod Manager")
+                    .size(32)
+                    .horizontal_alignment(Horizontal::Center);
+                let back_button = button("BACK").on_press(Message::ReturnToModList).width(120);
+                let intro_text = text("Made with <3 by Mew.")
+                    .horizontal_alignment(Horizontal::Center);
+                let this_code = button("Source Code")
+                    .on_press(Message::ActionOpen(
+                        "https://github.com/Raoul1808/icy-isaac-mod-manager".to_string(),
+                    ))
+                    .style(iced::theme::Button::Secondary)
+                    .width(240);
+                let rust_button = button("Made in Rust")
+                    .on_press(Message::ActionOpen("https://rust-lang.org/".to_string()))
+                    .style(iced::theme::Button::Secondary)
+                    .width(240);
+                let iced_button = button("Made with Iced")
+                    .on_press(Message::ActionOpen("https://iced.rs/".to_string()))
+                    .style(iced::theme::Button::Secondary)
+                    .width(240);
+                let bunch_o_links = column![this_code, rust_button, iced_button]
+                    .spacing(10)
+                    .align_items(Alignment::Center);
+                let middle_content = column![intro_text, bunch_o_links]
+                    .spacing(50)
+                    .padding(20)
+                    .height(Length::Fill)
+                    .align_items(Alignment::Center);
+                container(
+                    column![title, middle_content, back_button]
+                        .spacing(20)
+                        .align_items(Alignment::Center),
+                )
+                .width(Length::Fill)
+                .align_x(Horizontal::Center)
+                .center_x()
                 .padding(30)
                 .into()
             }

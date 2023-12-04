@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.75"
 directories = "5.0.1"
 iced = "0.10.0"
+open = "5.0.1"
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 rand = "0.8.5"
 rfd = "0.12.1"
