@@ -94,8 +94,8 @@ impl AppConfig {
     }
 
     pub fn load() -> anyhow::Result<Self> {
-        if let Some(path) = directories::ProjectDirs::from("", "", "") {
-            let path = path.config_dir();
+        if let Some(path) = directories::BaseDirs::new() {
+            let path = path.config_dir().join("IcyIsaacModManager");
             let config_path = path.join("config.json");
             let config_contents = fs::read_to_string(config_path)?;
             let config = serde_json::from_str(&config_contents)?;
@@ -106,8 +106,11 @@ impl AppConfig {
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        if let Some(path) = directories::ProjectDirs::from("", "", "") {
-            let path = path.config_dir();
+        if let Some(path) = directories::BaseDirs::new() {
+            let path = path.config_dir().join("IcyIsaacModManager");
+            if !path.exists() {
+                fs::create_dir(&path)?;
+            }
             let config_path = path.join("config.json");
             let config = serde_json::to_string_pretty(self)?;
             fs::write(config_path, config)?;
