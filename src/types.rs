@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 use std::{fs, io, path::PathBuf};
 
 use crate::util::create_empty_file;
@@ -80,4 +81,39 @@ pub enum ModTagId {
     #[serde(rename = "Sound Effects")]
     SoundEffects,
     Music,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct AppConfig {
+    pub mods_path: PathBuf,
+}
+
+impl AppConfig {
+    pub fn load_or_default() -> Self {
+        Self::load().unwrap_or_default()
+    }
+
+    pub fn load() -> anyhow::Result<Self> {
+        if let Some(path) = directories::ProjectDirs::from("", "", "") {
+            let path = path.config_dir();
+            let config_path = path.join("config.json");
+            let config_contents = fs::read_to_string(config_path)?;
+            let config = serde_json::from_str(&config_contents)?;
+            Ok(config)
+        } else {
+            Err(anyhow!("Cannot load config: directory somehow missing"))
+        }
+    }
+
+    pub fn save(&self) -> anyhow::Result<()> {
+        if let Some(path) = directories::ProjectDirs::from("", "", "") {
+            let path = path.config_dir();
+            let config_path = path.join("config.json");
+            let config = serde_json::to_string_pretty(self)?;
+            fs::write(config_path, config)?;
+            Ok(())
+        } else {
+            Err(anyhow!("Cannot save config: directory somehow missing"))
+        }
+    }
 }
