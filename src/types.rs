@@ -11,7 +11,7 @@ pub struct Mod {
 
 impl Mod {
     pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
-        let metadata_path = path.clone().join("metadata.xml");
+        let metadata_path = path.join("metadata.xml");
         let metadata_contents = fs::read_to_string(metadata_path)?;
         let metadata = quick_xml::de::from_str(&metadata_contents)?;
         Ok(Self { metadata, path })
