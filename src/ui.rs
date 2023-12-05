@@ -1,5 +1,6 @@
-use std::{fs, io};
+use std::fs;
 
+use anyhow::anyhow;
 use iced::{
     alignment::{Horizontal, Vertical},
     widget::{checkbox, column, container, pick_list, row, scrollable, text, text_input},
@@ -46,7 +47,10 @@ pub enum AppState {
 }
 
 impl ModManager {
-    fn refresh_mods(&mut self) -> io::Result<()> {
+    fn refresh_mods(&mut self) -> anyhow::Result<()> {
+        if self.config.mods_path.as_os_str().is_empty() || self.config.mods_path.is_relative() {
+            return Err(anyhow!("Invalid mod path set!"));
+        }
         let mut mods = Vec::new();
         for entry in fs::read_dir(&self.config.mods_path)?.flatten() {
             let path = entry.path();
