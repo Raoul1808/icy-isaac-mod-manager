@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install dependencies
       run: |
-        sudo apt install -y libxkbcommon-dev
+        sudo apt install -y libgtk-3-dev
     - name: Build
       run: cargo build --release
     - name: Upload artifact
