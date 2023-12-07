@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::{fs, io, path::PathBuf};
 
-use crate::util::create_empty_file;
+use crate::util::{create_empty_file, get_config_dir};
 
 #[derive(Debug)]
 pub struct Mod {
@@ -121,8 +121,7 @@ impl AppConfig {
     }
 
     pub fn load() -> anyhow::Result<Self> {
-        if let Some(path) = directories::BaseDirs::new() {
-            let path = path.config_dir().join("IcyIsaacModManager");
+        if let Some(path) = get_config_dir() {
             let config_path = path.join("config.json");
             let config_contents = fs::read_to_string(config_path)?;
             let config = serde_json::from_str(&config_contents)?;
@@ -133,8 +132,7 @@ impl AppConfig {
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        if let Some(path) = directories::BaseDirs::new() {
-            let path = path.config_dir().join("IcyIsaacModManager");
+        if let Some(path) = get_config_dir() {
             if !path.exists() {
                 fs::create_dir(&path)?;
             }
@@ -146,4 +144,10 @@ impl AppConfig {
             Err(anyhow!("Cannot save config: directory somehow missing"))
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ModProfile {
+    pub name: String,
+    pub enabled_mods: Vec<u64>,
 }

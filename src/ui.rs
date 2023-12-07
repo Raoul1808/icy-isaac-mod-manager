@@ -8,13 +8,17 @@ use iced::{
 };
 use rfd::FileDialog;
 
-use crate::types::{AppConfig, Mod, Theme};
+use crate::{
+    manager::{ModProfileManager, ModProfileState},
+    types::{AppConfig, Mod, Theme},
+};
 
 pub struct ModManager {
     mod_list: Vec<Mod>,
     state: AppState,
     config: AppConfig,
     current_theme: Option<Theme>,
+    profile_manager: ModProfileManager,
 }
 
 #[derive(Debug, Clone)]
@@ -24,6 +28,17 @@ pub enum Message {
     Refresh,
     EnableAll,
     DisableAll,
+
+    // Quick mod profile management
+    SelectProfile(ModProfileState),
+    LoadProfile,
+    SaveProfile,
+    ManageProfiles,
+
+    // Advanced profile management
+    OnProfileNameEdit(String),
+    CreateNewProfile,
+    DeleteCurrentProfile,
 
     // Navigation
     OpenConfig,
@@ -42,6 +57,7 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub enum AppState {
     ModList,
+    Profiles { temp_profile_name: String },
     Config(AppConfig),
     About,
 }
@@ -64,6 +80,14 @@ impl ModManager {
         self.mod_list = mods;
         Ok(())
     }
+
+    fn get_enabled_mod_ids(&self) -> Vec<u64> {
+        self.mod_list
+            .iter()
+            .filter(|m| m.enabled())
+            .map(|m| m.metadata.id)
+            .collect()
+    }
 }
 
 impl Sandbox for ModManager {
@@ -75,6 +99,7 @@ impl Sandbox for ModManager {
             state: AppState::ModList,
             config: AppConfig::load_or_default(),
             current_theme: None,
+            profile_manager: ModProfileManager::load_or_default(),
         };
         manager.current_theme = Some(manager.config.theme);
         let _ = manager.refresh_mods();
@@ -112,6 +137,49 @@ impl Sandbox for ModManager {
             Message::DisableAll => {
                 for m in self.mod_list.iter_mut() {
                     let _ = m.set_enabled(false);
+                }
+            }
+            // Mod profile management
+            Message::SelectProfile(profile) => {
+                self.profile_manager.update_selected_profile(profile.id);
+                // self.profile_manager.current_profile_state = Some(profile);
+                println!("{:#?}", self.profile_manager.current_profile_state);
+            }
+            Message::LoadProfile => {
+                if let Some(profile) = self.profile_manager.get_current_profile() {
+                    self.mod_list.iter_mut().for_each(|m| {
+                        let enabled = profile.enabled_mods.contains(&m.metadata.id);
+                        let _ = m.set_enabled(enabled);
+                    });
+                }
+            }
+            Message::SaveProfile => {
+                let enabled_mods = self.get_enabled_mod_ids();
+                self.profile_manager.update_current_profile(enabled_mods);
+                let _ = self.profile_manager.save();
+            }
+            Message::ManageProfiles => {
+                self.state = AppState::Profiles {
+                    temp_profile_name: String::new(),
+                };
+            }
+            // Advanced profile management
+            Message::OnProfileNameEdit(name) => {
+                if let AppState::Profiles { temp_profile_name } = &mut self.state {
+                    *temp_profile_name = name;
+                }
+            }
+            Message::CreateNewProfile => {
+                if let AppState::Profiles { temp_profile_name } = &mut self.state {
+                    self.profile_manager
+                        .create_empty_profile(temp_profile_name.clone());
+                    let _ = self.profile_manager.save();
+                }
+            }
+            Message::DeleteCurrentProfile => {
+                if let AppState::Profiles { .. } = &mut self.state {
+                    self.profile_manager.delete_current_profile();
+                    let _ = self.profile_manager.save();
                 }
             }
             // Navigation stuff
@@ -165,20 +233,93 @@ impl Sandbox for ModManager {
                 )
                 .spacing(10);
                 let scroll = scrollable(mod_list).width(Length::Fill);
-                let refresh = button("REFRESH").on_press(Message::Refresh).width(120);
-                let enable_all = button("ENABLE ALL").on_press(Message::EnableAll).width(120);
+                let refresh = button("REFRESH").on_press(Message::Refresh).width(128);
+                let enable_all = button("ENABLE ALL").on_press(Message::EnableAll).width(128);
                 let disable_all = button("DISABLE ALL")
                     .on_press(Message::DisableAll)
-                    .width(120);
+                    .width(128);
                 let top_buttons = column![refresh, enable_all, disable_all]
                     .spacing(10)
                     .height(Length::Fill);
-                let settings_button = button("SETTINGS").on_press(Message::OpenConfig).width(120);
-                let about_button = button("ABOUT").on_press(Message::OpenAbout).width(120);
+
+                let profile_combo = pick_list(
+                    &self.profile_manager.profile_states[..],
+                    self.profile_manager.current_profile_state.clone(),
+                    Message::SelectProfile,
+                );
+                let profile_load = button("LOAD PROFILE")
+                    .on_press(Message::LoadProfile)
+                    .width(128);
+                let profile_save = button("SAVE PROFILE")
+                    .on_press(Message::SaveProfile)
+                    .width(128);
+                let profile_new = button("MANAGE PROFILES")
+                    .on_press(Message::ManageProfiles)
+                    .width(128);
+                let profile_buttons =
+                    column![profile_combo, profile_new, profile_load, profile_save]
+                        .spacing(10)
+                        .height(Length::Fill);
+
+                let settings_button = button("SETTINGS").on_press(Message::OpenConfig).width(128);
+                let about_button = button("ABOUT").on_press(Message::OpenAbout).width(128);
                 let bottom_buttons = column![settings_button, about_button].spacing(10);
-                container(row![scroll, column![top_buttons, bottom_buttons],].spacing(10))
-                    .padding(30)
-                    .into()
+                container(
+                    row![
+                        scroll,
+                        column![top_buttons, profile_buttons, bottom_buttons],
+                    ]
+                    .spacing(10),
+                )
+                .padding(30)
+                .into()
+            }
+            AppState::Profiles { temp_profile_name } => {
+                let header_title = text("Profile Management")
+                    .size(32)
+                    .horizontal_alignment(Horizontal::Center);
+
+                let profiles_label = text("Selected Profile")
+                    .vertical_alignment(Vertical::Center)
+                    .line_height(iced::widget::text::LineHeight::Relative(2.));
+                let profiles_list = pick_list(
+                    &self.profile_manager.profile_states[..],
+                    self.profile_manager.current_profile_state.clone(),
+                    Message::SelectProfile,
+                );
+                let profiles_row = row![profiles_label, profiles_list].spacing(10);
+
+                let input_label = text("New Profile Name")
+                    .vertical_alignment(Vertical::Center)
+                    .line_height(iced::widget::text::LineHeight::Relative(2.));
+                let input_field =
+                    text_input("Type the name of a profile to create", temp_profile_name)
+                        .on_input(Message::OnProfileNameEdit);
+                let profile_create_row = row![input_label, input_field].spacing(10);
+                let create_profile_button = button("CREATE PROFILE")
+                    .width(150)
+                    .on_press(Message::CreateNewProfile);
+                let remove_profile_button = button("REMOVE PROFILE")
+                    .width(150)
+                    .on_press(Message::DeleteCurrentProfile);
+                let profile_buttons_row =
+                    row![create_profile_button, remove_profile_button].spacing(10);
+
+                let options =
+                    column![profiles_row, profile_create_row, profile_buttons_row].spacing(10);
+
+                let back_button = button("RETURN")
+                    .on_press(Message::ReturnToModList)
+                    .width(120);
+                let save_button = button("SAVE").on_press(Message::SaveProfile).width(120);
+                let end_row = row![back_button, save_button].spacing(20);
+                container(
+                    column![header_title, options, end_row]
+                        .spacing(30)
+                        .align_items(Alignment::Center),
+                )
+                .padding(30)
+                .into()
             }
             AppState::Config(temp_config) => {
                 let back_button = button("RETURN")

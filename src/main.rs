@@ -1,5 +1,6 @@
 use iced::{Sandbox, Settings};
 
+mod manager;
 mod types;
 mod ui;
 mod util;
